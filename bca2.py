@@ -31,7 +31,7 @@ else:
 blastout = outfile.rsplit(".", 1)[0] + ".blastout"
 cpu_count = multiprocessing.cpu_count()
 
-#### Blast command
+#### Constructs blast command
 print("Running the following command: \n \
 {blastcmd} -query {query} -db {db} -outfmt '6 qseqid sacc staxids evalue' \
 -max_target_seqs {m} -out {out} -num_threads {threads} -evalue {e}\
@@ -46,11 +46,6 @@ os.system("{blastcmd} -query {query} -db {db} -outfmt '6 qseqid sacc staxids eva
 # parses the blastout file into two dictionaries:
 # uniq_subject_taxids: all taxids, returns lineage list or list of corresponding ids
 # uniq_query_ids: all query sequence names, returns list of subject taxids that were hit by that query
-
-#turn uniq_query_ids into like query_hits
-#read in the uniq queries from the input fasta file seqnames
-#then, as you parse the blastout file, if there are no hits for that one you just put an empty list in the dict
-#in the end it will have the same structure as current uniq_query_ids, but with empty ones for seqs that didn't get blast hits
 
 ## parsing blastout
 uniq_subject_taxids = {}
@@ -83,14 +78,14 @@ for i in record:
     uniq_subject_taxids[current_taxid]['name_list'] = name_list
 
 # for each uniq query, find consensus lineage using set intersection and write output
-# not the queries are based on the blastout file so seqs that didn't blast to anything won't show up in the output..
+# Current bug: since queries are based on the blastout file, seqs that didn't blast to anything won't show up in the output
 with open(outfile, "w") as o:
     for i in uniq_query_ids.keys():
         if len(uniq_query_ids[i]) == 1:
             out = uniq_subject_taxids[uniq_query_ids[i].pop()]
             o.write("\t".join([i, out['name_list'][-1], out['taxid_list'][-1]]) + "\n")
         else:
-            #currently this gets ruined for 16S by "uncultured bacterium" stuff..
+            #currently this gets ruined for genes like 16S by "uncultured bacterium" stuff..
             #maybe just add an option to filter those and/or add some e_val filtering too
             setlist = [set(uniq_subject_taxids[j]['name_list']) for j in uniq_query_ids[i]]
             shared = setlist[0].intersection(*setlist[1:])
